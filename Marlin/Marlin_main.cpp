@@ -30,7 +30,7 @@
 #include "Marlin.h"
 
 #ifdef ENABLE_AUTO_BED_LEVELING
-#include "vector_3.h"
+  #include "vector_3.h"
   #ifdef ACCURATE_BED_LEVELING
     #include "qr_solve.h"
   #endif
@@ -49,16 +49,16 @@
 #include "math.h"
 
 #ifdef BLINKM
-#include "BlinkM.h"
-#include "Wire.h"
+  #include "BlinkM.h"
+  #include "Wire.h"
 #endif
 
 #if NUM_SERVOS > 0
-#include "Servo.h"
+  #include "Servo.h"
 #endif
 
 #if defined(DIGIPOTSS_PIN) && DIGIPOTSS_PIN > -1
-#include <SPI.h>
+  #include <SPI.h>
 #endif
 
 #define VERSION_STRING  "1.0.0"
@@ -181,8 +181,9 @@
 //=============================public variables=============================
 //===========================================================================
 #ifdef SDSUPPORT
-CardReader card;
+  CardReader card;
 #endif
+
 float homing_feedrate[] = HOMING_FEEDRATE;
 bool axis_relative_modes[] = AXIS_RELATIVE_MODES;
 int feedmultiply=100; //100->1 200->2
@@ -190,35 +191,40 @@ int saved_feedmultiply;
 int extrudemultiply=100; //100->1 200->2
 float current_position[NUM_AXIS] = { 0.0, 0.0, 0.0, 0.0 };
 float add_homeing[3]={0,0,0};
+
 #ifdef DELTA
-float endstop_adj[3]={0,0,0};
+  float endstop_adj[3]={0,0,0};
 #endif
+
 float min_pos[3] = { X_MIN_POS, Y_MIN_POS, Z_MIN_POS };
 float max_pos[3] = { X_MAX_POS, Y_MAX_POS, Z_MAX_POS };
 bool axis_known_position[3] = {false, false, false};
 
 // Extruder offset
 #if EXTRUDERS > 1
-#ifndef DUAL_X_CARRIAGE
-  #define NUM_EXTRUDER_OFFSETS 2 // only in XY plane
-#else
-  #define NUM_EXTRUDER_OFFSETS 3 // supports offsets in XYZ plane
+  #ifndef DUAL_X_CARRIAGE
+    #define NUM_EXTRUDER_OFFSETS 2 // only in XY plane
+  #else
+    #define NUM_EXTRUDER_OFFSETS 3 // supports offsets in XYZ plane
+  #endif
+
+  float extruder_offset[NUM_EXTRUDER_OFFSETS][EXTRUDERS] = {
+    #if defined(EXTRUDER_OFFSET_X) && defined(EXTRUDER_OFFSET_Y)
+      EXTRUDER_OFFSET_X, EXTRUDER_OFFSET_Y
+    #endif
+  };
 #endif
-float extruder_offset[NUM_EXTRUDER_OFFSETS][EXTRUDERS] = {
-#if defined(EXTRUDER_OFFSET_X) && defined(EXTRUDER_OFFSET_Y)
-  EXTRUDER_OFFSET_X, EXTRUDER_OFFSET_Y
-#endif
-};
-#endif
+
 uint8_t active_extruder = 0;
 int fanSpeed=0;
 #ifdef SERVO_ENDSTOPS
   int servo_endstops[] = SERVO_ENDSTOPS;
   int servo_endstop_angles[] = SERVO_ENDSTOP_ANGLES;
 #endif
+
 #ifdef BARICUDA
-int ValvePressure=0;
-int EtoPPressure=0;
+  int ValvePressure=0;
+  int EtoPPressure=0;
 #endif
 
 #ifdef FWRETRACT
@@ -237,7 +243,7 @@ int EtoPPressure=0;
 #endif
 
 #ifdef DELTA
-float delta[3] = {0.0, 0.0, 0.0};
+  float delta[3] = {0.0, 0.0, 0.0};
 #endif
 
 //===========================================================================
@@ -252,11 +258,13 @@ static long gcode_N, gcode_LastN, Stopped_gcode_LastN = 0;
 
 static bool relative_mode = false;  //Determines Absolute or Relative Coordinates
 
-static char cmdbuffer[BUFSIZE][MAX_CMD_SIZE];
 static bool fromsd[BUFSIZE];
+
+static char cmdbuffer[BUFSIZE][MAX_CMD_SIZE]; // Can take BUFSIZE number of commands, MAX_CMD_SIZE long
 static int bufindr = 0;
 static int bufindw = 0;
-static int buflen = 0;
+static int buflen = 0;  // number of commands currently in buffer
+
 //static int i = 0;
 static char serial_char;
 static int serial_count = 0;
@@ -289,19 +297,37 @@ bool CooldownNoWait = true;
 bool target_direction;
 
 //===========================================================================
-//=============================ROUTINES=============================
+//=============================ROUTINES======================================
 //===========================================================================
 
 void get_arc_coordinates();
 bool setTargetedHotend(int code);
 
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void serial_echopair_P(const char *s_P, float v)
-    { serialprintPGM(s_P); SERIAL_ECHO(v); }
+{ 
+    serialprintPGM(s_P); SERIAL_ECHO(v); 
+}
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void serial_echopair_P(const char *s_P, double v)
-    { serialprintPGM(s_P); SERIAL_ECHO(v); }
+{ 
+   serialprintPGM(s_P); SERIAL_ECHO(v); 
+}
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void serial_echopair_P(const char *s_P, unsigned long v)
-    { serialprintPGM(s_P); SERIAL_ECHO(v); }
+{ 
+   serialprintPGM(s_P); SERIAL_ECHO(v); 
+}
 
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 extern "C"{
   extern unsigned int __bss_end;
   extern unsigned int __heap_start;
@@ -322,8 +348,12 @@ extern "C"{
 //adds an command to the main command buffer
 //thats really done in a non-safe way.
 //needs overworking someday
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void enquecommand(const char *cmd)
 {
+  // If there is space in the buffer for another command        
   if(buflen < BUFSIZE)
   {
     //this is dangerous if a mixing of serial and this happsens
@@ -332,11 +362,13 @@ void enquecommand(const char *cmd)
     SERIAL_ECHOPGM("enqueing \"");
     SERIAL_ECHO(cmdbuffer[bufindw]);
     SERIAL_ECHOLNPGM("\"");
-    bufindw= (bufindw + 1)%BUFSIZE;
+    bufindw = (bufindw + 1) % BUFSIZE;
     buflen += 1;
   }
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void enquecommand_P(const char *cmd)
 {
   if(buflen < BUFSIZE)
@@ -351,7 +383,9 @@ void enquecommand_P(const char *cmd)
     buflen += 1;
   }
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void setup_killpin()
 {
   #if defined(KILL_PIN) && KILL_PIN > -1
@@ -359,7 +393,9 @@ void setup_killpin()
     WRITE(KILL_PIN,HIGH);
   #endif
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void setup_photpin()
 {
   #if defined(PHOTOGRAPH_PIN) && PHOTOGRAPH_PIN > -1
@@ -367,7 +403,9 @@ void setup_photpin()
     WRITE(PHOTOGRAPH_PIN, LOW);
   #endif
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void setup_powerhold()
 {
   #if defined(SUICIDE_PIN) && SUICIDE_PIN > -1
@@ -383,7 +421,9 @@ void setup_powerhold()
 	#endif
   #endif
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void suicide()
 {
   #if defined(SUICIDE_PIN) && SUICIDE_PIN > -1
@@ -391,7 +431,9 @@ void suicide()
     WRITE(SUICIDE_PIN, LOW);
   #endif
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void servo_init()
 {
   #if (NUM_SERVOS >= 1) && defined(SERVO0_PIN) && (SERVO0_PIN > -1)
@@ -421,11 +463,13 @@ void servo_init()
   #endif
 
   #if defined (ENABLE_AUTO_BED_LEVELING) && (PROBE_SERVO_DEACTIVATION_DELAY > 0)
-  delay(PROBE_SERVO_DEACTIVATION_DELAY);
-  servos[servo_endstops[Z_AXIS]].detach();
+    delay(PROBE_SERVO_DEACTIVATION_DELAY);
+    servos[servo_endstops[Z_AXIS]].detach();
   #endif
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void setup()
 {
   setup_killpin();
@@ -445,6 +489,7 @@ void setup()
 
   SERIAL_ECHOPGM(MSG_MARLIN);
   SERIAL_ECHOLNPGM(VERSION_STRING);
+
   #ifdef STRING_VERSION_CONFIG_H
     #ifdef STRING_CONFIG_H_AUTHOR
       SERIAL_ECHO_START;
@@ -456,6 +501,7 @@ void setup()
       SERIAL_ECHOLNPGM(__DATE__);
     #endif
   #endif
+
   SERIAL_ECHO_START;
   SERIAL_ECHOPGM(MSG_FREE_MEMORY);
   SERIAL_ECHO(freeMemory());
@@ -483,15 +529,18 @@ void setup()
     SET_OUTPUT(CONTROLLERFAN_PIN); //Set pin used for driver cooling fan
   #endif
 }
-
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void loop()
 {
   if(buflen < (BUFSIZE-1))
     get_command();
+
   #ifdef SDSUPPORT
   card.checkautostart(false);
   #endif
+  
   if(buflen)
   {
     #ifdef SDSUPPORT
@@ -519,33 +568,46 @@ void loop()
       {
         process_commands();
       }
-    #else
+    #else // SDSUPPORT
       process_commands();
     #endif //SDSUPPORT
+    
     buflen = (buflen-1);
     bufindr = (bufindr + 1)%BUFSIZE;
   }
+  
   //check heater every n milliseconds
   manage_heater();
   manage_inactivity();
   checkHitEndstops();
   lcd_update();
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void get_command()
 {
+  // Check to see if any characters have been received by serial interupt handler      
   while( MYSERIAL.available() > 0  && buflen < BUFSIZE) {
+          
+    // Read serial character from interupt handler buffers
     serial_char = MYSERIAL.read();
+    
+    // Detect a line termination character, ':'?????, or too many characters
     if(serial_char == '\n' ||
        serial_char == '\r' ||
        (serial_char == ':' && comment_mode == false) ||
        serial_count >= (MAX_CMD_SIZE - 1) )
     {
-      if(!serial_count) { //if empty line
+      // if empty line so far
+      if(!serial_count) { 
         comment_mode = false; //for new command
         return;
       }
-      cmdbuffer[bufindw][serial_count] = 0; //terminate string
+      
+      //terminate cmdbuffer string
+      cmdbuffer[bufindw][serial_count] = 0;
+      
       if(!comment_mode){
         comment_mode = false; //for new command
         fromsd[bufindw] = false;
@@ -604,6 +666,8 @@ void get_command()
             return;
           }
         }
+        
+        // Is it a G-code we have recieved?
         if((strchr(cmdbuffer[bufindw], 'G') != NULL)){
           strchr_pointer = strchr(cmdbuffer[bufindw], 'G');
           switch((int)((strtod(&cmdbuffer[bufindw][strchr_pointer - cmdbuffer[bufindw] + 1], NULL)))){
@@ -611,7 +675,8 @@ void get_command()
           case 1:
           case 2:
           case 3:
-            if(Stopped == false) { // If printer is stopped by an error the G[0-3] codes are ignored.
+            // If printer is stopped by an error the G[0-3] codes are ignored.      
+            if(Stopped == false) { 
           #ifdef SDSUPPORT
               if(card.saving)
                 break;
@@ -628,17 +693,34 @@ void get_command()
           }
 
         }
-        bufindw = (bufindw + 1)%BUFSIZE;
+        // Move the buffer write index onto next command slot
+        // wrapping if neccessary
+        bufindw = (bufindw + 1) % BUFSIZE;
         buflen += 1;
       }
-      serial_count = 0; //clear buffer
+
+      //clear buffer ready for next command
+      serial_count = 0; 
     }
+
+    // either store character or switch to comment mode if ';' detected.
     else
     {
-      if(serial_char == ';') comment_mode = true;
-      if(!comment_mode) cmdbuffer[bufindw][serial_count++] = serial_char;
+      // Start of comment line?            
+      if (serial_char == ';') 
+        comment_mode = true;
+
+      // Store character for later processing
+      if (!comment_mode)
+      {        
+        cmdbuffer[bufindw][serial_count] = serial_char;
+        
+        // Move character index onto next location
+        serial_count++;
+      }  
     }
   }
+  
   #ifdef SDSUPPORT
   if(!card.sdprinting || serial_count!=0){
     return;
@@ -651,6 +733,10 @@ void get_command()
   static bool stop_buffering=false;
   if(buflen==0) stop_buffering=false;
 
+  /* 
+   * Detect a line termination character, '#' stop buffering, 
+   * ':'?????, or too many characters
+   */
   while( !card.eof()  && buflen < BUFSIZE && !stop_buffering) {
     int16_t n=card.get();
     serial_char = (char)n;
@@ -660,8 +746,11 @@ void get_command()
        (serial_char == ':' && comment_mode == false) ||
        serial_count >= (MAX_CMD_SIZE - 1)||n==-1)
     {
+      // Reached end of File      
       if(card.eof()){
         SERIAL_PROTOCOLLNPGM(MSG_FILE_PRINTED);
+        
+        // Report print time
         stoptime=millis();
         char time[30];
         unsigned long t=(stoptime-starttime)/1000;
@@ -671,55 +760,83 @@ void get_command()
         sprintf_P(time, PSTR("%i hours %i minutes"),hours, minutes);
         SERIAL_ECHO_START;
         SERIAL_ECHOLN(time);
+        
         lcd_setstatus(time);
         card.printingHasFinished();
         card.checkautostart(true);
 
       }
+      
       if(serial_char=='#')
         stop_buffering=true;
 
+      // if empty line
       if(!serial_count)
       {
-        comment_mode = false; //for new command
-        return; //if empty line
+        // for new command
+        comment_mode = false;
+        return; 
       }
-      cmdbuffer[bufindw][serial_count] = 0; //terminate string
+      
+      // terminate string
+      cmdbuffer[bufindw][serial_count] = 0;
 //      if(!comment_mode){
         fromsd[bufindw] = true;
         buflen += 1;
-        bufindw = (bufindw + 1)%BUFSIZE;
+        bufindw = (bufindw + 1) % BUFSIZE;
 //      }
-      comment_mode = false; //for new command
-      serial_count = 0; //clear buffer
+
+      // for new command
+      comment_mode = false; 
+
+      // clear buffer
+      serial_count = 0; 
     }
     else
     {
-      if(serial_char == ';') comment_mode = true;
-      if(!comment_mode) cmdbuffer[bufindw][serial_count++] = serial_char;
+      // Start of comment line?            
+      if(serial_char == ';') 
+        comment_mode = true;
+
+      // Store character for later processing
+      if(!comment_mode) 
+      {        
+        cmdbuffer[bufindw][serial_count] = serial_char;
+
+        // Move character index onto next location
+        serial_count++
+      }
     }
   }
 
   #endif //SDSUPPORT
 
 }
-
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 float code_value()
 {
   return (strtod(&cmdbuffer[bufindr][strchr_pointer - cmdbuffer[bufindr] + 1], NULL));
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 long code_value_long()
 {
   return (strtol(&cmdbuffer[bufindr][strchr_pointer - cmdbuffer[bufindr] + 1], NULL, 10));
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 bool code_seen(char code)
 {
   strchr_pointer = strchr(cmdbuffer[bufindr], code);
   return (strchr_pointer != NULL);  //Return True if a character was found
 }
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 
 #define DEFINE_PGM_READ_ANY(type, reader)       \
     static inline type pgm_read_any(const type *p)  \
@@ -742,21 +859,27 @@ XYZ_CONSTS_FROM_CONFIG(float, home_retract_mm, HOME_RETRACT_MM);
 XYZ_CONSTS_FROM_CONFIG(signed char, home_dir,  HOME_DIR);
 
 #ifdef DUAL_X_CARRIAGE
+
   #if EXTRUDERS == 1 || defined(COREXY) \
       || !defined(X2_ENABLE_PIN) || !defined(X2_STEP_PIN) || !defined(X2_DIR_PIN) \
       || !defined(X2_HOME_POS) || !defined(X2_MIN_POS) || !defined(X2_MAX_POS) \
       || !defined(X_MAX_PIN) || X_MAX_PIN < 0
     #error "Missing or invalid definitions for DUAL_X_CARRIAGE mode."
   #endif
+
   #if X_HOME_DIR != -1 || X2_HOME_DIR != 1
     #error "Please use canonical x-carriage assignment" // the x-carriages are defined by their homing directions
   #endif
 
-#define DXC_FULL_CONTROL_MODE 0
-#define DXC_AUTO_PARK_MODE    1
-#define DXC_DUPLICATION_MODE  2
+  #define DXC_FULL_CONTROL_MODE 0
+  #define DXC_AUTO_PARK_MODE    1
+  #define DXC_DUPLICATION_MODE  2
+
 static int dual_x_carriage_mode = DEFAULT_DUAL_X_CARRIAGE_MODE;
 
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 static float x_home_pos(int extruder) {
   if (extruder == 0)
     return base_home_pos(X_AXIS) + add_homeing[X_AXIS];
@@ -767,7 +890,9 @@ static float x_home_pos(int extruder) {
     // (through the M218 command).
     return (extruder_offset[X_AXIS][1] > 0) ? extruder_offset[X_AXIS][1] : X2_HOME_POS;
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 static int x_home_dir(int extruder) {
   return (extruder == 0) ? X_HOME_DIR : X2_HOME_DIR;
 }
@@ -779,8 +904,12 @@ static unsigned long delayed_move_time = 0; // used in mode 1
 static float duplicate_extruder_x_offset = DEFAULT_DUPLICATION_X_OFFSET; // used in mode 2
 static float duplicate_extruder_temp_offset = 0; // used in mode 2
 bool extruder_duplication_enabled = false; // used in mode 2
-#endif //DUAL_X_CARRIAGE
 
+#endif // DUAL_X_CARRIAGE
+
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 static void axis_is_at_home(int axis) {
 #ifdef DUAL_X_CARRIAGE
   if (axis == X_AXIS) {
@@ -805,7 +934,12 @@ static void axis_is_at_home(int axis) {
 }
 
 #ifdef ENABLE_AUTO_BED_LEVELING
+
 #ifdef ACCURATE_BED_LEVELING
+
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 static void set_bed_level_equation_lsq(double *plane_equation_coefficients)
 {
     vector_3 planeNormal = vector_3(-plane_equation_coefficients[0], -plane_equation_coefficients[1], 1);
@@ -829,7 +963,11 @@ static void set_bed_level_equation_lsq(double *plane_equation_coefficients)
     plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
 }
 
-#else
+#else // ACCURATE_BED_LEVELING
+
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 static void set_bed_level_equation(float z_at_xLeft_yFront, float z_at_xRight_yFront, float z_at_xLeft_yBack) {
     plan_bed_level_matrix.set_to_identity();
 
@@ -864,8 +1002,12 @@ static void set_bed_level_equation(float z_at_xLeft_yFront, float z_at_xRight_yF
 
     plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
 }
+
 #endif // ACCURATE_BED_LEVELING
 
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 static void run_z_probe() {
     plan_bed_level_matrix.set_to_identity();
     feedrate = homing_feedrate[Z_AXIS];
@@ -894,7 +1036,9 @@ static void run_z_probe() {
     // make sure the planner knows where we are as it may be a bit different than we last said to move to
     plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 static void do_blocking_move_to(float x, float y, float z) {
     float oldFeedRate = feedrate;
 
@@ -908,11 +1052,15 @@ static void do_blocking_move_to(float x, float y, float z) {
 
     feedrate = oldFeedRate;
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 static void do_blocking_move_relative(float offset_x, float offset_y, float offset_z) {
     do_blocking_move_to(current_position[X_AXIS] + offset_x, current_position[Y_AXIS] + offset_y, current_position[Z_AXIS] + offset_z);
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 static void setup_for_endstop_move() {
     saved_feedrate = feedrate;
     saved_feedmultiply = feedmultiply;
@@ -921,7 +1069,9 @@ static void setup_for_endstop_move() {
 
     enable_endstops(true);
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 static void clean_up_after_endstop_move() {
 #ifdef ENDSTOPS_ONLY_FOR_HOMING
     enable_endstops(false);
@@ -931,7 +1081,9 @@ static void clean_up_after_endstop_move() {
     feedmultiply = saved_feedmultiply;
     previous_millis_cmd = millis();
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 static void engage_z_probe() {
     // Engage Z Servo endstop if enabled
     #ifdef SERVO_ENDSTOPS
@@ -947,7 +1099,9 @@ static void engage_z_probe() {
     }
     #endif
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 static void retract_z_probe() {
     // Retract Z Servo endstop if enabled
     #ifdef SERVO_ENDSTOPS
@@ -964,8 +1118,11 @@ static void retract_z_probe() {
     #endif
 }
 
-#endif // #ifdef ENABLE_AUTO_BED_LEVELING
+#endif // ENABLE_AUTO_BED_LEVELING
 
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 static void homeaxis(int axis) {
 #define HOMEAXIS_DO(LETTER) \
   ((LETTER##_MIN_PIN > -1 && LETTER##_HOME_DIR==-1) || (LETTER##_MAX_PIN > -1 && LETTER##_HOME_DIR==1))
@@ -1043,15 +1200,21 @@ static void homeaxis(int axis) {
 
   }
 }
+
 #define HOMEAXIS(LETTER) homeaxis(LETTER##_AXIS)
 
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void process_commands()
 {
   unsigned long codenum; //throw away variable
   char *starpos = NULL;
+
 #ifdef ENABLE_AUTO_BED_LEVELING
   float x_tmp, y_tmp, z_tmp, real_z;
 #endif
+
   if(code_seen('G'))
   {
     switch((int)code_value())
@@ -2942,7 +3105,9 @@ void process_commands()
 
   ClearToSend();
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void FlushSerialRequestResend()
 {
   //char cmdbuffer[bufindr][100]="Resend:";
@@ -2951,7 +3116,9 @@ void FlushSerialRequestResend()
   SERIAL_PROTOCOLLN(gcode_LastN + 1);
   ClearToSend();
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void ClearToSend()
 {
   previous_millis_cmd = millis();
@@ -2961,10 +3128,13 @@ void ClearToSend()
   #endif //SDSUPPORT
   SERIAL_PROTOCOLLNPGM(MSG_OK);
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void get_coordinates()
 {
   bool seen[4]={false,false,false,false};
+
   for(int8_t i=0; i < NUM_AXIS; i++) {
     if(code_seen(axis_codes[i]))
     {
@@ -2973,11 +3143,14 @@ void get_coordinates()
     }
     else destination[i] = current_position[i]; //Are these else lines really needed?
   }
+
   if(code_seen('F')) {
     next_feedrate = code_value();
     if(next_feedrate > 0.0) feedrate = next_feedrate;
   }
+
   #ifdef FWRETRACT
+
   if(autoretract_enabled)
   if( !(seen[X_AXIS] || seen[Y_AXIS] || seen[Z_AXIS]) && seen[E_AXIS])
   {
@@ -2998,7 +3171,7 @@ void get_coordinates()
 
     }
     else
-      if(echange>MIN_RETRACT) //retract_recover
+    if(echange>MIN_RETRACT) //retract_recover
     {
       if(retracted)
       {
@@ -3012,9 +3185,12 @@ void get_coordinates()
     }
 
   }
+
   #endif //FWRETRACT
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void get_arc_coordinates()
 {
 #ifdef SF_ARC_FIX
@@ -3039,7 +3215,9 @@ void get_arc_coordinates()
      offset[1] = 0.0;
    }
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void clamp_to_software_endstops(float target[3])
 {
   if (min_software_endstops) {
@@ -3056,6 +3234,10 @@ void clamp_to_software_endstops(float target[3])
 }
 
 #ifdef DELTA
+
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void calculate_delta(float cartesian[3])
 {
   delta[X_AXIS] = sqrt(DELTA_DIAGONAL_ROD_2
@@ -3080,8 +3262,12 @@ void calculate_delta(float cartesian[3])
   SERIAL_ECHOPGM(" z="); SERIAL_ECHOLN(delta[Z_AXIS]);
   */
 }
-#endif
 
+#endif //DELTA
+
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void prepare_move()
 {
   clamp_to_software_endstops(destination);
@@ -3167,7 +3353,9 @@ void prepare_move()
     current_position[i] = destination[i];
   }
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void prepare_arc_move(char isclockwise) {
   float r = hypot(offset[X_AXIS], offset[Y_AXIS]); // Compute arc radius for mc_arc
 
@@ -3194,6 +3382,9 @@ void prepare_arc_move(char isclockwise) {
 unsigned long lastMotor = 0; //Save the time for when a motor was turned on last
 unsigned long lastMotorCheck = 0;
 
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void controllerFan()
 {
   if ((millis() - lastMotorCheck) >= 2500) //Not a time critical function, so we only check every 2500ms
@@ -3228,25 +3419,33 @@ void controllerFan()
     }
   }
 }
+
 #endif
 
 #ifdef TEMP_STAT_LEDS
-static bool blue_led = false;
-static bool red_led = false;
-static uint32_t stat_update = 0;
 
+  static bool blue_led = false;
+  static bool red_led = false;
+  static uint32_t stat_update = 0;
+
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void handle_status_leds(void) {
   float max_temp = 0.0;
+
   if(millis() > stat_update) {
     stat_update += 500; // Update every 0.5s
     for (int8_t cur_extruder = 0; cur_extruder < EXTRUDERS; ++cur_extruder) {
        max_temp = max(max_temp, degHotend(cur_extruder));
        max_temp = max(max_temp, degTargetHotend(cur_extruder));
     }
+    
     #if defined(TEMP_BED_PIN) && TEMP_BED_PIN > -1
       max_temp = max(max_temp, degTargetBed());
       max_temp = max(max_temp, degBed());
     #endif
+    
     if((max_temp > 55.0) && (red_led == false)) {
       digitalWrite(STAT_LED_RED, 1);
       digitalWrite(STAT_LED_BLUE, 0);
@@ -3261,8 +3460,12 @@ void handle_status_leds(void) {
     }
   }
 }
-#endif
 
+#endif // TEMP_STAT_LEDS
+
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void manage_inactivity()
 {
   if( (millis() - previous_millis_cmd) >  max_inactive_time )
@@ -3285,9 +3488,11 @@ void manage_inactivity()
     if( 0 == READ(KILL_PIN) )
       kill();
   #endif
+
   #if defined(CONTROLLERFAN_PIN) && CONTROLLERFAN_PIN > -1
     controllerFan(); //Check if fan should be turned on to cool stepper drivers down
   #endif
+  
   #ifdef EXTRUDER_RUNOUT_PREVENT
     if( (millis() - previous_millis_cmd) >  EXTRUDER_RUNOUT_SECONDS*1000 )
     if(degHotend(active_extruder)>EXTRUDER_RUNOUT_MINTEMP)
@@ -3307,6 +3512,7 @@ void manage_inactivity()
      WRITE(E0_ENABLE_PIN,oldstatus);
     }
   #endif
+  
   #if defined(DUAL_X_CARRIAGE)
     // handle delayed move timeout
     if (delayed_move_time != 0 && (millis() - delayed_move_time) > 1000 && Stopped == false)
@@ -3317,12 +3523,16 @@ void manage_inactivity()
       prepare_move();
     }
   #endif
+  
   #ifdef TEMP_STAT_LEDS
       handle_status_leds();
   #endif
+  
   check_axes_activity();
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void kill()
 {
   cli(); // Stop interrupts
@@ -3344,7 +3554,9 @@ void kill()
   suicide();
   while(1) { /* Intentionally left empty */ } // Wait for reset
 }
-
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void Stop()
 {
   disable_heater();
@@ -3357,9 +3569,18 @@ void Stop()
   }
 }
 
-bool IsStopped() { return Stopped; };
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
+bool IsStopped() { 
+  return Stopped; 
+};
 
 #ifdef FAST_PWM_FAN
+
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 void setPwmFrequency(uint8_t pin, int val)
 {
   val &= 0x07;
@@ -3427,10 +3648,15 @@ void setPwmFrequency(uint8_t pin, int val)
 
   }
 }
+
 #endif //FAST_PWM_FAN
 
+/*============================================================================*/
+/*                                                                            */
+/*============================================================================*/
 bool setTargetedHotend(int code){
   tmp_extruder = active_extruder;
+
   if(code_seen('T')) {
     tmp_extruder = code_value();
     if(tmp_extruder >= EXTRUDERS) {
@@ -3455,4 +3681,5 @@ bool setTargetedHotend(int code){
   }
   return false;
 }
+/*=eof========================================================================*/
 
