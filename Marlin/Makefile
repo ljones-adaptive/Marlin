@@ -37,11 +37,11 @@
 # from the commandline with "make HARDWARE_MOTHERBOARD=71" for example
 
 # This defined the board you are compiling for (see Configuration.h for the options)
-HARDWARE_MOTHERBOARD ?= 11
+HARDWARE_MOTHERBOARD ?= 62
 
 # Arduino source install directory, and version number
-ARDUINO_INSTALL_DIR  ?= ../../arduino-0022
-ARDUINO_VERSION      ?= 22
+ARDUINO_INSTALL_DIR  ?= ../../../arduino-0023
+ARDUINO_VERSION      ?= 23
 
 # You can optionally set a path to the avr-gcc tools. Requires a trailing slash. (ex: /usr/local/avr-gcc/bin)
 AVR_TOOLS_PATH ?=
@@ -113,7 +113,7 @@ HARDWARE_VARIANT ?= Sanguino
 MCU              ?= atmega644p
 else ifeq  ($(HARDWARE_MOTHERBOARD),62)
 HARDWARE_VARIANT ?= Sanguino
-MCU              ?= atmega644p
+MCU              ?= atmega1284p
 else ifeq  ($(HARDWARE_MOTHERBOARD),63)
 HARDWARE_VARIANT ?= Sanguino
 MCU              ?= atmega644p
